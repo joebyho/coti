@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>COTI · Coffee Time</title>
+  <style>
+    :root{
+      --leaf:#6BA36B;        /* 咖啡綠 */
+      --leaf-soft:#B9D4B9;   /* 淡綠 */
+      --bean:#4B2E1F;        /* 咖啡啡 */
+      --bean-soft:#7A523B;   /* 淺啡 */
+      --cream:#F8F5EE;       /* 奶泡色背景 */
+      --card:#FFFFFF;
+      --shadow:0 10px 28px rgba(0,0,0,.10);
+      --accent:#8ECF8E;      /* 進度條綠 */
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:"Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
+      color:var(--bean);
+      /* 咖啡廳氣氛：奶泡底＋角落咖啡暈染 */
+      background:
+        radial-gradient(220px 220px at 12% 10%, rgba(123, 84, 58, .12) 0 60%, transparent 61%),
+        radial-gradient(260px 260px at 85% 82%, rgba(107,163,107,.14) 0 55%, transparent 56%),
+        linear-gradient(180deg, #FDFCF8, var(--cream));
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .player-container{
+      width:min(92%, 540px);
+      background:var(--card);
+      border:3px solid var(--leaf-soft);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:26px 22px 22px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+
+    /* 咖啡豆裝飾（不需上載圖片） */
+    .player-container::before,
+    .player-container::after{
+      content:"";
+      position:absolute;
+      width:140px; height:90px;
+      background:var(--bean-soft);
+      border-radius:60% 60% 50% 50%/65% 65% 35% 35%;
+      opacity:.12;
+      filter:blur(.3px);
+      z-index:0;
+    }
+    .player-container::before{ top:-26px; left:-30px; transform:rotate(-18deg); }
+    .player-container::after { bottom:-24px; right:-26px; transform:rotate(22deg); }
+
+    h1{
+      font-size:28px; line-height:1.2; margin:6px 0 10px;
+      color:var(--leaf);
+      letter-spacing:.5px;
+      position:relative; z-index:1;
+    }
+
+    .brand-sub{
+      font-size:14px; opacity:.9; margin-bottom:18px;
+      color:var(--bean-soft);
+      position:relative; z-index:1;
+    }
+
+    #start-button{
+      appearance:none; border:0; cursor:pointer;
+      padding:13px 22px; border-radius:999px;
+      font-size:16px; font-weight:700; color:#fff;
+      background:linear-gradient(180deg, var(--bean), #3C2417);
+      box-shadow: 0 4px 0 #2e1b11, 0 12px 20px rgba(75,46,31,.28);
+      transition:transform .08s ease, box-shadow .2s ease, filter .2s ease;
+      position:relative; z-index:1;
+    }
+    #start-button:hover{ filter:brightness(1.03); }
+    #start-button:active{ transform:translateY(1px); box-shadow:0 3px 0 #2e1b11, 0 8px 14px rgba(75,46,31,.28); }
+
+    .now-playing{
+      margin-top:14px; font-size:14px; opacity:.9; min-height:1.2em;
+      position:relative; z-index:1;
+    }
+
+    .progress-wrap{
+      margin:12px auto 0; width:92%; height:8px; background:#EDE8DC;
+      border-radius:999px; overflow:hidden; position:relative; z-index:1;
+      outline:1px solid rgba(0,0,0,.04);
+    }
+    .progress-bar{ width:0%; height:100%; background:var(--accent); transition:width .2s linear; }
+
+    .footnote{
+      margin-top:14px; font-size:12px; opacity:.75; position:relative; z-index:1;
+    }
+  </style>
+</head>
+<body>
+  <main class="player-container" role="region" aria-label="COTI 音樂播放器">
+    <h1>COTI · Coffee Time</h1>
+    <p class="brand-sub">綠意咖啡調 · 柔和木色系 · 讓音樂像手沖一樣慢慢滲出。</p>
+
+    <button id="start-button" aria-label="播放音樂">▶️ 播放音樂</button>
+
+    <div class="now-playing" id="nowPlaying" aria-live="polite"></div>
+    <div class="progress-wrap" aria-hidden="true">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <p class="footnote">提示：點「播放」後會自動循環整個歌單。</p>
+  </main>
+
+  <audio id="audio-player" preload="none" style="display:none;"></audio>
+
+  <script>
+    // ★ 把 MP3 放在與 index.html 同一層；如放在 /music，請把路徑改為 "music/xxx.mp3"
+    const playlist = [
+      "COTI.mp3"
+    ];
+
+    const audio = document.getElementById("audio-player");
+    const startBtn = document.getElementById("start-button");
+    const nowPlayingEl = document.getElementById("nowPlaying");
+    const progressBar = document.getElementById("progressBar");
+
+    let current = 0;
+
+    function setNowPlaying(srcPath){
+      const name = srcPath.split("/").pop();
+      nowPlayingEl.textContent = "Now Playing · " + name;
+    }
+
+    function playTrack(index){
+      if (!playlist.length) return;
+      current = (index + playlist.length) % playlist.length;
+      const src = playlist[current];
+      audio.src = src;
+      audio.play().catch(()=>{/* 某些瀏覽器需用戶互動後才可播放 */});
+      setNowPlaying(src);
+    }
+
+    startBtn.addEventListener("click", ()=>{
+      playTrack(current);
+      startBtn.style.display = "none";
+    });
+
+    audio.addEventListener("ended", ()=>{
+      playTrack(current + 1);
+    });
+
+    // 進度條
+    audio.addEventListener("timeupdate", ()=>{
+      if (!audio.duration || isNaN(audio.duration)) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      progressBar.style.width = pct + "%";
+    });
+  </script>
+</body>
+</html>
